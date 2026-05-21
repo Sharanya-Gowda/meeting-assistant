@@ -1,0 +1,1 @@
+![Application Flowchart](../screenshots/user_flowchart.png)

@@ -1,13 +1,23 @@
+import os
+from datetime import datetime
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
+from dotenv import load_dotenv
+
+# 1. CRITICAL: Force load environment variables BEFORE importing internal services
+load_dotenv()
+
+# 2. Standard Framework and Database Imports
 from app.config import settings
-from app.db.database import engine, Base
+from app.db.database import engine, Base, get_db
 import app.db.models as models
 from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.db.models import Meeting
 from app.schemas.meetings import MeetingCreateText, MeetingResponse
+
+# 3. Import Day 7 service pipeline modules (Now safe from environment initialization bugs)
+from app.services.ai_pipeline import process_meeting_text
+from app.services.extraction import save_extraction_results
 
 # Run database schema structural generation routine checks
 Base.metadata.create_all(bind=engine)
@@ -40,37 +50,48 @@ def health_check():
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
+# --- Day 6 & 7 Meeting Core Router Module ---
 router = APIRouter()
 
-@app.post("/api/meetings/text", response_model=MeetingResponse, status_code=status.HTTP_201_CREATED)
-def submit_meeting_text(meeting_in: MeetingCreateText, db: Session = Depends(get_db)):
-    # 1. Handle Error Case: Empty text -> 400 error
-    stripped_text = meeting_in.text.strip()
-    if not stripped_text:
+@router.post("/api/meetings/text", response_model=MeetingResponse, status_code=status.HTTP_201_CREATED)
+def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db)):
+    # 1. Enforce string parameters and character constraints
+    stripped_text = payload.text.strip()
+    if not stripped_text or len(stripped_text) < 20:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Meeting text cannot be empty."
+            status_code=400, 
+            detail="Invalid text length. Raw content text must contain at least 20 character elements."
         )
-    
-    # 2. Validate: Must be at least 20 characters
-    if len(stripped_text) < 20:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-            detail="Meeting text must be at least 20 characters long."
-        )
-
-    # 3. Create the database record
+        
+    # 2. Instantiate parent record placeholder setting initial status to pending
     new_meeting = Meeting(
-        title=meeting_in.title,
-        meeting_date=meeting_in.meeting_date,
+        title=payload.title,
+        meeting_date=payload.meeting_date,
+        input_type="text", 
         raw_input_text=stripped_text,
-        input_type="text",
         status="pending"
     )
     
     db.add(new_meeting)
     db.commit()
     db.refresh(new_meeting)
-
-    # 4. Return the new meeting ID and status
+    
+    # 3. Synchronous Pipeline Execution Link
+    # Process text payload using Gemini models
+    ai_results = process_meeting_text(stripped_text)
+    
+    # Commit child relational lists into database structures
+    success = save_extraction_results(new_meeting.id, ai_results, db)
+    
+    if not success:
+        raise HTTPException(
+            status_code=500, 
+            detail="Failed to unpack and save AI analytics components safely to server database."
+        )
+        
+    # Force refresh local memory reference state to represent the new completed database values
+    db.refresh(new_meeting)
     return new_meeting
+
+# 4. CRITICAL: Include the router into the active FastAPI app instance
+app.include_router(router)

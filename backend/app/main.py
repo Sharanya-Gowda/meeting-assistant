@@ -4,6 +4,7 @@ from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, File, Fo
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 # 1. CRITICAL: Force load environment variables BEFORE importing internal services [cite: 1245]
 load_dotenv()
@@ -163,6 +164,27 @@ def upload_meeting_file(
     db.refresh(new_meeting)
     return new_meeting
 
+@router.get("/api/meetings/{meeting_id}")
+def get_meeting(meeting_id: UUID, db: Session = Depends(get_db)):
+    """Retrieve full meeting data and related items."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Meeting not found"
+        )
+    return meeting
+
+@router.get("/api/meetings/{meeting_id}/status")
+def get_meeting_status(meeting_id: UUID, db: Session = Depends(get_db)):
+    """Lightweight endpoint for frontend polling."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Meeting not found"
+        )
+    return {"status": meeting.status}
 
 # 5. Include the router into the active FastAPI app instance [cite: 1246]
 app.include_router(router)

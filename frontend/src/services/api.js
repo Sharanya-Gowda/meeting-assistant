@@ -1,12 +1,17 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Safely point to your FastAPI server
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+// Health Check
+export const checkHealth = () => axios.get(`${API_URL}/health`);
+
+// Submission Endpoints (Day 6 & 8)
+export const submitMeetingText = (data) => axios.post(`${API_URL}/meetings/text`, data);
+export const submitMeetingFile = (formData) => axios.post(`${API_URL}/meetings/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
 });
 
-export default api;
+// Retrieval Endpoints (Day 9)
+export const getMeetingStatus = (id) => axios.get(`${API_URL}/meetings/${id}/status`);
+export const getMeeting = (id) => axios.get(`${API_URL}/meetings/${id}`);

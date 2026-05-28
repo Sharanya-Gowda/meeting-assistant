@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import api from './services/api';
+import { checkHealth } from './services/api'; // <--- FIX 1: Import the specific function
 import Navigation from './components/Navigation';
 import HomePage from './pages/HomePage';
 import ResultPage from './pages/ResultPage';
@@ -12,7 +12,7 @@ export default function App() {
 
   useEffect(() => {
     // Perform infrastructure verification check on runtime mount
-    api.get('/api/health')
+    checkHealth() // <--- FIX 2: Call the function directly instead of using api.get
       .then((res) => {
         if (res.data.status === 'healthy') {
           setBackendStatus('Backend connected');

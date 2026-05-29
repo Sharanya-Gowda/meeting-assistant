@@ -86,3 +86,25 @@ This document tracks the technical tasks completed, blockers encountered, engine
 
 ## WEEK 1 REVIEW SUMMARY
 All core infrastructure criteria for the Week 1 baseline have been successfully satisfied. The full repository structure is scaffolded cleanly, all documentation blueprints are established, the local backend server is running with automated PostgreSQL schema model mapping, and the frontend React client is connected to the backend API network layer. Finally, the Gemini AI parsing script is fully operational and validated against JSON schema rules. Ready for Week 2 feature development.
+
+
+### Week 2 Summary: API Development, AI Integration, and Frontend Interface
+**Date:** [25-05-2026]
+
+* **Tasks Completed:**
+  * Developed the core backend ingestion route (`POST /api/meetings/text`) incorporating rigorous text length validations via Pydantic schemas.
+  * Deployed the `POST /api/meetings/upload` endpoint using `python-docx` and `python-multipart` to intercept and safely extract text from `.txt`, `.md`, and `.docx` binary files.
+  * Successfully connected the Google GenAI extraction script to the FastAPI routes to run inference loops over ingested text synchronously.
+  * Implemented retrieval routes (`GET /api/meetings/{id}`) to fetch processed AI structures.
+  * Configured Axios frontend networking architecture to proxy requests directly to the local backend.
+  * Constructed the interactive React `HomePage` utilizing dynamic state to seamlessly toggle between raw text inputs and file uploads.
+  * Engineered the React `ResultPage` layout. Introduced a `setTimeout` polling cycle to dynamically update the UI from "pending" to "completed", mapping all AI datasets (Summaries, Action Items, Decisions, Blockers) into styled component grids and lists. 
+
+* **Blockers & Fixes Resolved:**
+  * *Pydantic UUID Validation Crash:* Resolved a 500 error sequence where Pydantic expected an integer ID but the database utilized UUIDs by updating `MeetingResponse` to import and utilize Python's `UUID` type explicitly.
+  * *Vite/Node Compilation Error:* Addressed a native `rolldown` compilation crash on Windows by safely downgrading `vite` to version 5 in `package.json`, ensuring stable frontend execution regardless of local environment limits.
+  * *Import Pathing Issue:* Overcame an `Uncaught SyntaxError` routing crash by swapping a default import to a named import (`{ }`) within React when importing updated API networking layers.
+
+---
+**WEEK 2 REVIEW SUMMARY:**
+Week 2 marks the completion of the core product application loop. The application can successfully ingest meeting text or files from the web UI, route them through the AI analysis pipeline, decompose the JSON payload into structured relational PostgreSQL records, and actively poll the database to render the completed results natively back to the user. The project is fully unblocked and ready for Week 3 Review.

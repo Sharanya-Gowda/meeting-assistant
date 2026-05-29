@@ -164,15 +164,21 @@ def upload_meeting_file(
     db.refresh(new_meeting)
     return new_meeting
 
-@router.get("/api/meetings/{meeting_id}")
+@router.get("/api/meetings/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(meeting_id: UUID, db: Session = Depends(get_db)):
-    """Retrieve full meeting data and related items."""
+    """
+    Retrieve full meeting data and related items.
+    FastAPI will automatically gather and attach all Action Items, Decisions, and Blockers
+    because of the response_model=MeetingResponse declaration!
+    """
     meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    
     if not meeting:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Meeting not found"
         )
+        
     return meeting
 
 @router.get("/api/meetings/{meeting_id}/status")

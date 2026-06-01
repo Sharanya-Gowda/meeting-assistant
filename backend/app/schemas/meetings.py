@@ -48,4 +48,24 @@ class MeetingResponse(BaseModel):
     decisions: List[DecisionResponse] = []
     blockers: List[BlockerResponse] = []
 
+    
+
     model_config = ConfigDict(from_attributes=True)
+
+# Add this at the bottom of backend/app/schemas/meetings.py
+
+class MeetingListResponse(BaseModel):
+    id: UUID
+    title: str
+    meeting_date: date
+    status: str
+    short_summary: Optional[str] = None
+    # Notice we do NOT include the heavy lists (action items, etc.) here to save bandwidth!
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PaginatedMeetingResponse(BaseModel):
+    total: int
+    page: int
+    size: int
+    items: List[MeetingListResponse]

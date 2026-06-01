@@ -22,7 +22,7 @@ from app.utils.file_handling import validate_file, extract_text_from_file
 # 4. Import Day 7 AI Processing & Relational Storage Services [cite: 1247]
 from app.services.ai_pipeline import process_meeting_text
 from app.services.extraction import save_extraction_results
-
+from app.schemas.meetings import MeetingCreateText, MeetingResponse, PaginatedMeetingResponse
 # Run database schema structural generation routine checks [cite: 1247]
 Base.metadata.create_all(bind=engine)
 
@@ -191,6 +191,33 @@ def get_meeting_status(meeting_id: UUID, db: Session = Depends(get_db)):
             detail="Meeting not found"
         )
     return {"status": meeting.status}
+
+@router.get("/api/meetings", response_model=PaginatedMeetingResponse)
+def get_all_meetings(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Returns a paginated list of all meetings, sorted by most recent first.
+    """
+    # 1. Get the total count of meetings in the database
+    total_meetings = db.query(Meeting).count()
+    
+    # 2. Fetch the limited chunk of meetings, ordered by date descending
+    meetings = (
+        db.query(Meeting)
+        .order_by(Meeting.meeting_date.desc(), Meeting.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+    # 3. Calculate current page number
+    current_page = (skip // limit) + 1
+    
+    return {
+        "total": total_meetings,
+        "page": current_page,
+        "size": limit,
+        "items": meetings
+    }
 
 # 5. Include the router into the active FastAPI app instance [cite: 1246]
 app.include_router(router)

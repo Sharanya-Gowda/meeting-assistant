@@ -5,25 +5,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from uuid import UUID
+from sqlalchemy import or_
 
-# 1. CRITICAL: Force load environment variables BEFORE importing internal services [cite: 1245]
+# CRITICAL: Force load environment variables BEFORE importing internal services
 load_dotenv()
 
-# 2. Standard Framework and Database Imports [cite: 1247]
+# Standard Framework and Database Imports 
 from app.config import settings
 from app.db.database import engine, Base, get_db
 import app.db.models as models
 from app.db.models import Meeting
 from app.schemas.meetings import MeetingCreateText, MeetingResponse
 
-# 3. Import Day 8 File Handling Utility Modules [cite: 1293]
+# File Handling Utility Modules 
 from app.utils.file_handling import validate_file, extract_text_from_file
 
-# 4. Import Day 7 AI Processing & Relational Storage Services [cite: 1247]
+# AI Processing & Relational Storage Services 
 from app.services.ai_pipeline import process_meeting_text
 from app.services.extraction import save_extraction_results
 from app.schemas.meetings import MeetingCreateText, MeetingResponse, PaginatedMeetingResponse
-# Run database schema structural generation routine checks [cite: 1247]
+
+from app.db.models import Meeting, ActionItem, Decision, Blocker
+# Run database schema structural generation routine checks 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -32,7 +35,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS origins based on environment rules [cite: 1247]
+# Configure CORS origins based on environment rules 
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 
 app.add_middleware(
@@ -63,7 +66,7 @@ def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db
     Accepts raw text pasted in the request body, creates a pending database record,
     and runs the Gemini processing pipeline synchronously.
     """
-    # 1. Enforce string parameters and character constraints [cite: 1247]
+    # 1. Enforce string parameters and character constraints 
     stripped_text = payload.text.strip()
     if not stripped_text or len(stripped_text) < 20:
         raise HTTPException(
@@ -71,7 +74,7 @@ def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db
             detail="Invalid text length. Raw content text must contain at least 20 character elements."
         )
         
-    # 2. Instantiate parent record placeholder setting initial status to pending [cite: 1247]
+    # 2. Instantiate parent record placeholder setting initial status to pending 
     new_meeting = Meeting(
         title=payload.title,
         meeting_date=payload.meeting_date,
@@ -84,10 +87,10 @@ def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db
     db.commit()
     db.refresh(new_meeting)
     
-    # 3. Synchronous Pipeline Execution Link [cite: 1247]
+    # 3. Synchronous Pipeline Execution Link 
     ai_results = process_meeting_text(stripped_text)
     
-    # Commit child relational lists into database structures [cite: 1247]
+    # Commit child relational lists into database structures
     success = save_extraction_results(new_meeting.id, ai_results, db)
     
     if not success:
@@ -96,7 +99,7 @@ def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db
             detail="Failed to unpack and save AI analytics components safely to server database."
         )
         
-    # Force refresh local memory reference state to represent the new completed database values [cite: 1247]
+    # Force refresh local memory reference state to represent the new completed database values 
     db.refresh(new_meeting)
     return new_meeting
 
@@ -164,6 +167,47 @@ def upload_meeting_file(
     db.refresh(new_meeting)
     return new_meeting
 
+
+@router.get("/api/meetings/search/query", response_model=PaginatedMeetingResponse)
+def search_meetings(q: str, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Searches meetings by title, text, summaries, and associated action items/decisions.
+    """
+    if not q or len(q.strip()) == 0:
+        return {"total": 0, "page": 1, "size": limit, "items": []}
+
+    search_term = f"%{q.strip()}%"
+
+    # The magic of SQLAlchemy: Search the main table OR child tables using .any()
+    search_filter = or_(
+        Meeting.title.ilike(search_term),
+        Meeting.raw_input_text.ilike(search_term),
+        Meeting.short_summary.ilike(search_term),
+        Meeting.detailed_summary.ilike(search_term),
+        Meeting.action_items.any(ActionItem.description.ilike(search_term)),
+        Meeting.decisions.any(Decision.description.ilike(search_term))
+    )
+
+    total_matches = db.query(Meeting).filter(search_filter).count()
+    
+    meetings = (
+        db.query(Meeting)
+        .filter(search_filter)
+        .order_by(Meeting.meeting_date.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    current_page = (skip // limit) + 1
+
+    return {
+        "total": total_matches,
+        "page": current_page,
+        "size": limit,
+        "items": meetings
+    }
+
 @router.get("/api/meetings/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(meeting_id: UUID, db: Session = Depends(get_db)):
     """
@@ -219,5 +263,5 @@ def get_all_meetings(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
         "items": meetings
     }
 
-# 5. Include the router into the active FastAPI app instance [cite: 1246]
+# 5. Include the router into the active FastAPI app instance 
 app.include_router(router)

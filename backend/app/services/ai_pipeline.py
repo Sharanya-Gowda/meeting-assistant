@@ -14,34 +14,33 @@ client = genai.Client(api_key=api_key)
 def process_meeting_text(text: str) -> dict:
     """
     Constructs the structured prompt template, invokes the Gemini API, 
-    and handles JSON structural parsing.
+    and handles JSON structural parsing with advanced guardrails.
     """
     prompt = f"""
-    You are an expert meeting analyst. Your job is to extract
-    structured information from meeting notes or transcripts.
-    Analyze the following meeting content and extract:
+    You are an expert executive assistant and senior meeting analyst. Your task is to extract highly accurate, structured information from the provided meeting transcript.
 
-    1. SHORT_SUMMARY: A concise summary in 3-5 sentences.
-    2. DETAILED_SUMMARY: A detailed summary in 1-3 paragraphs.
-    3. DECISIONS: A list of decisions that were made during the meeting. For each decision, include:
-       - description: what was decided
-       - decided_by: who made or announced the decision (use "Not identified" if unclear)
-    4. ACTION_ITEMS: A list of tasks or action items. For each, include:
-       - description: what needs to be done
-       - owner: who is responsible (use "Not identified" if unclear)
-       - deadline: when it is due (use "Not specified" if not mentioned)
-       - priority: high, medium, or low (use "not specified" if not inferable)
-    5. BLOCKERS: A list of blockers, risks, or open questions. For each, include:
-       - description: what the issue is
-       - type: "blocker", "risk", or "open_question"
-       - raised_by: who raised it (use "Not identified" if unclear)
-    6. FOLLOWUP_EMAIL: A professional follow-up email summarizing the meeting.
+    STRICT EXTRACTION RULES:
+    1. SHORT_SUMMARY: 3-5 sentences capturing the main objective and final outcome.
+    2. DETAILED_SUMMARY: 1-3 paragraphs providing context, technical details, and discussion points.
+    3. DECISIONS: Only include FINAL, agreed-upon decisions. Do NOT include proposed options that were rejected.
+       - description: Be specific about what was decided.
+       - decided_by: The person who made the final call. Use "Group" if collaborative, or "Not identified" if unclear.
+    4. ACTION_ITEMS: Concrete tasks that must be executed after the meeting.
+       - description: What needs to be done (start with an action verb if possible).
+       - owner: Only extract explicit owners. If someone casually says "we should...", assign to "Not identified". Do NOT guess or hallucinate owners.
+       - deadline: Extract exact or relative dates (e.g., "Next Friday"). If none mentioned, use "Not specified".
+       - priority: Infer based on keywords ("critical", "urgent", "blocker" = high). Default to "medium" if unsure.
+    5. BLOCKERS: Obstacles preventing progress.
+       - description: Clear explanation of the roadblock.
+       - type: Classify exactly as "blocker" (stopping work), "risk" (potential future blocker), or "open_question".
+       - raised_by: Who brought it up.
+    6. FOLLOWUP_EMAIL: A professional, ready-to-send email summarizing the meeting, addressing the team, and listing key decisions and action items cleanly.
 
-    IMPORTANT RULES:
-    - Only extract information explicitly present in the input. Do NOT invent information.
-    - If something is unclear, mark it as such.
-    - If input is too short, say so in the summary and return empty lists.
-    
+    CRITICAL ANTI-HALLUCINATION GUARDRAILS:
+    - If the meeting has NO action items (e.g., it is purely informational), return an empty list `[]` for action_items. Do NOT invent tasks.
+    - If the meeting is just a discussion with NO decisions, return an empty list `[]` for decisions.
+    - Base your extraction ONLY on the provided text. Do not use outside knowledge.
+
     Return your response as valid JSON matching this exact schema:
     {{
       "short_summary": "string",
@@ -55,6 +54,7 @@ def process_meeting_text(text: str) -> dict:
     MEETING CONTENT:
     {text}
     """
+
     
     try:
         response = client.models.generate_content(

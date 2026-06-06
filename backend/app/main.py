@@ -68,6 +68,21 @@ def submit_meeting_text(payload: MeetingCreateText, db: Session = Depends(get_db
     """
     # 1. Enforce string parameters and character constraints 
     stripped_text = payload.text.strip()
+    # 1. Edge Case: Word count boundaries
+    word_count = len(stripped_text.split())
+    
+    if word_count < 50:
+        raise HTTPException(
+            status_code=400, 
+            detail="Input is too short. Please provide at least 50 words of meaningful meeting context."
+        )
+        
+    if word_count > 10000:
+        raise HTTPException(
+            status_code=413, 
+            detail="Input payload exceeds the 10,000 word limit. Please upload a summarized transcript."
+        )
+
     if not stripped_text or len(stripped_text) < 20:
         raise HTTPException(
             status_code=400, 

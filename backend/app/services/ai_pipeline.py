@@ -1,7 +1,9 @@
 import os
+import time
 import json
 from google import genai
 from google.genai import types
+from google.genai import errors
 from fastapi import HTTPException
 
 # Initialize the modern GenAI Client cleanly
@@ -14,8 +16,16 @@ client = genai.Client(api_key=api_key)
 def process_meeting_text(text: str) -> dict:
     """
     Constructs the structured prompt template, invokes the Gemini API, 
-    and handles JSON structural parsing with advanced guardrails.
+    and handles JSON structural parsing with advanced guardrails and retries.
     """
+    max_retries = 2
+    timeout_seconds = 60
+    start_time = time.time()
+
+    # Edge Case: Filler/Greetings check (basic heuristic before hitting API)
+    if not any(keyword in text.lower() for keyword in ["discuss", "meeting", "action", "decide", "update", "team"]):
+        raise HTTPException(status_code=400, detail="Transcript lacks substantive meeting context or English syntax.")
+
     prompt = f"""
     You are an expert executive assistant and senior meeting analyst. Your task is to extract highly accurate, structured information from the provided meeting transcript.
 
@@ -55,22 +65,44 @@ def process_meeting_text(text: str) -> dict:
     {text}
     """
 
-    
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",  # Highly fast, cost-efficient for text JSON extractions
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json"
+    for attempt in range(max_retries + 1):
+        # Processing Timeout Edge Case Check
+        if time.time() - start_time > timeout_seconds:
+            raise HTTPException(status_code=504, detail="Processing timeout: Extraction exceeded 60 seconds.")
+
+        try:
+            # Gemini API Call enforcing JSON format
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",  # Highly fast, cost-efficient for text JSON extractions
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json"
+                )
             )
-        )
-        
-        # Safely parse the verified text output back as a native Python dictionary
-        return json.loads(response.text)
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"AI Pipeline Execution Core Failure: {str(e)}"
-        )
+            
+            # 1. Get the raw text
+            raw_text = response.text
+            
+            # 2. Strip out markdown code blocks if Gemini added them (Fallback cleaner)
+            if raw_text.startswith("```json"):
+                raw_text = raw_text.replace("```json\n", "").replace("```", "").strip()
+            elif raw_text.startswith("```"):
+                raw_text = raw_text.replace("```\n", "").replace("```", "").strip()
+                
+            # 3. Parse the cleaned string back into a Python Dictionary
+            return json.loads(raw_text)
+            
+        except errors.APIError as e:
+            if attempt == max_retries:
+                raise HTTPException(status_code=502, detail="Gemini API rate limit or connection timeout exceeded after retries.")
+            time.sleep(2) # Wait 2 seconds before retrying
+            
+        except json.JSONDecodeError:
+            if attempt == max_retries:
+                raise HTTPException(status_code=500, detail="Received malformed, unparseable JSON structure from Gemini AI.")
+            time.sleep(1) # Wait 1 second before retrying
+            
+        except Exception as e:
+            # Catch-all for unexpected pipeline core failures
+            raise HTTPException(status_code=500, detail=f"AI Pipeline Execution Core Failure: {str(e)}")

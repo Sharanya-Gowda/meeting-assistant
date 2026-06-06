@@ -40,3 +40,27 @@ def test_create_meeting_text_missing_field_error():
         }
     )
     assert response.status_code == 422
+
+def test_very_short_input():
+    response = client.post(
+        "/api/meetings/text",
+        json={
+            "title": "Short Test",
+            "meeting_date": "2026-06-06",
+            "text": "Hello everyone. Goodbye." # Less than 50 words
+        }
+    )
+    assert response.status_code == 400
+    assert "too short" in response.json()["detail"]
+
+def test_filler_no_substance_input():
+    response = client.post(
+        "/api/meetings/text",
+        json={
+            "title": "Filler Test",
+            "meeting_date": "2026-06-06",
+            "text": "Hey how are you doing today the weather is really nice outside I think I will go for a walk later it is sunny." * 5 # Over 50 words, but no meeting keywords
+        }
+    )
+    assert response.status_code == 400
+    assert "lacks substantive meeting context" in response.json()["detail"]

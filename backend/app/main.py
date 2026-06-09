@@ -46,6 +46,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "message": "Meeting-to-Execution Assistant API is running perfectly!",
+        "documentation": "/docs"
+    }
+
 @app.get("/api/health", tags=["Infrastructure"])
 def health_check():
     """

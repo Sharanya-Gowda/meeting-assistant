@@ -278,5 +278,23 @@ def get_all_meetings(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
         "items": meetings
     }
 
+@router.delete("/api/meetings/{meeting_id}", status_code=status.HTTP_200_OK)
+def delete_meeting(meeting_id: UUID, db: Session = Depends(get_db)):
+    """
+    Deletes a specific meeting and all its cascaded relational data.
+    """
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meeting not found"
+        )
+    
+    db.delete(meeting)
+    db.commit()
+    
+    return {"message": "Meeting and associated data successfully deleted"}
+
 # 5. Include the router into the active FastAPI app instance 
 app.include_router(router)

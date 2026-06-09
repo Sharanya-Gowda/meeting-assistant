@@ -24,3 +24,9 @@ export const getMeetings = async (skip = 0, limit = 10) => {
 export const searchMeetings = async (query, skip = 0, limit = 10) => {
   return await axios.get(`${API_URL}/meetings/search/query?q=${encodeURIComponent(query)}&skip=${skip}&limit=${limit}`);
 };
+
+
+// Delete a specific meeting
+export const deleteMeeting = (meetingId) => {
+  return axios.delete(`${API_URL}/meetings/${meetingId}`);
+};

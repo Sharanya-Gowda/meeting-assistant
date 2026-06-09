@@ -90,7 +90,7 @@ All core infrastructure criteria for the Week 1 baseline have been successfully 
 ---
 
 ### Week 2 Summary: API Development, AI Integration, and Frontend Interface
-**Date:** [25-25-2026 - 29-05-2026]
+**Date:** [25-05-2026 - 29-05-2026]
 
 * **Tasks Completed:**
   * Developed the core backend ingestion route (`POST /api/meetings/text`) incorporating rigorous text length validations via Pydantic schemas.
@@ -109,3 +109,21 @@ All core infrastructure criteria for the Week 1 baseline have been successfully 
 ---
 **WEEK 2 REVIEW SUMMARY:**
 Week 2 marks the completion of the core product application loop. The application can successfully ingest meeting text or files from the web UI, route them through the AI analysis pipeline, decompose the JSON payload into structured relational PostgreSQL records, and actively poll the database to render the completed results natively back to the user. The project is fully unblocked and ready for Week 3 Review.
+
+# Week 3 Summary: Search, Reliability, and UI Polish
+**Date:** [01-06-2026 - 09-06-2026]
+
+## Milestones Achieved
+- **Meeting History & Search**: Implemented a paginated historical ledger and a global keyword search across titles, summaries, and action items using PostgreSQL queries.
+- **Error Handling & Edge Cases**: Hardened the backend API to strictly validate word counts, handle malformed Gemini JSON responses, and gracefully intercept external API timeouts.
+- **Data Deletion**: Built a cascading `DELETE` endpoint and wired it to the React UI, allowing users to securely wipe out meeting sessions.
+- **UI/UX Polish**: Standardized typography, added loading/empty states, fixed contrast issues, and finalized error-state popups.
+
+## Review Checklist Verification
+- [x] Meeting history page working
+- [x] Search working
+- [x] Prompt refined with documented iterations
+- [x] Edge cases handled & Error handling improved
+- [x] At least 15 sample meetings processed successfully
+- [x] Delete functionality working
+- [x] UI is clean and usable

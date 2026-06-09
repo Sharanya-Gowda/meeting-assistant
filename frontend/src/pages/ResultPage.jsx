@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getMeeting } from '../services/api';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getMeeting, deleteMeeting } from '../services/api';
 
 function ResultPage() {
   const { meetingId } = useParams();
+  const navigate = useNavigate();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copySuccess, setCopySuccess] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let timeoutId;
@@ -42,13 +44,41 @@ function ResultPage() {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '3rem' }}>Loading...</div>;
-  if (error) return <div style={{ textAlign: 'center', marginTop: '3rem', color: 'red' }}>{error}</div>;
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this meeting? This action cannot be undone.")) {
+      setIsDeleting(true);
+      try {
+        await deleteMeeting(meetingId);
+        alert("Meeting deleted successfully!");
+        navigate('/history'); // Redirect back to history page
+      } catch (err) {
+        alert("Failed to delete the meeting. Please try again.");
+        setIsDeleting(false);
+      }
+    }
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '3rem', fontSize: '1.2rem' }}>⏳ Loading AI Results...</div>;
+  if (error) return <div style={{ textAlign: 'center', marginTop: '3rem', color: '#d9534f', fontSize: '1.2rem' }}>{error}</div>;
   if (!meeting) return null;
 
   return (
     <div style={{ maxWidth: '800px', margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
-      <Link to="/" style={{ textDecoration: 'none', color: '#0066cc' }}>&larr; Back to Home</Link>
+      
+      {/* HEADER WITH BACK AND DELETE BUTTON */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Link to="/history" style={{ textDecoration: 'none', color: '#0066cc', fontWeight: 'bold' }}>&larr; Back to History</Link>
+        <button 
+          onClick={handleDelete} 
+          disabled={isDeleting}
+          style={{ 
+            backgroundColor: '#d9534f', color: 'white', border: 'none', 
+            padding: '8px 16px', borderRadius: '4px', cursor: 'pointer',
+            fontWeight: 'bold', opacity: isDeleting ? 0.6 : 1
+          }}>
+          {isDeleting ? 'Deleting...' : '🗑️ Delete Meeting'}
+        </button>
+      </div>
       
       <header style={{ marginTop: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid #ccc' }}>
         <h1 style={{ marginBottom: '0.5rem' }}>{meeting.title}</h1>
@@ -92,7 +122,7 @@ function ResultPage() {
 
           <section style={{ marginTop: '2rem' }}>
             <h3>Detailed Summary</h3>
-            <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#f0f4f8' }}>
+            <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#f7efef' }}>
               {meeting.detailed_summary || "No detailed summary available."}
             </p>
           </section>
@@ -103,7 +133,7 @@ function ResultPage() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: '#110b46' }}>
+                    <tr style={{ background: '#110b46', color: 'white' }}>
                       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Description</th>
                       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Owner</th>
                       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Deadline</th>
@@ -122,8 +152,8 @@ function ResultPage() {
                             borderRadius: '12px', 
                             fontSize: '0.85rem',
                             fontWeight: 'bold',
-                            // background: item.priority === 'high' ? '#ffebee' : item.priority === 'medium' ? '#fff3e0' : '#e8f5e9',
-                            // color: item.priority === 'high' ? '#c62828' : item.priority === 'medium' ? '#ef6c00' : '#2e7d32'
+                            background: item.priority === 'high' ? '#ffebee' : item.priority === 'medium' ? '#fff3e0' : '#e8f5e9',
+                            color: item.priority === 'high' ? '#c62828' : item.priority === 'medium' ? '#ef6c00' : '#2e7d32'
                           }}>
                             {item.priority.toUpperCase()}
                           </span>
@@ -134,37 +164,37 @@ function ResultPage() {
                 </table>
               </div>
             ) : (
-              <p style={{ color: '#666' }}>No action items identified.</p>
+              <p style={{ color: '#f1efef' }}>No action items identified.</p>
             )}
           </section>
 
           <section style={{ marginTop: '2.5rem' }}>
             <h3>⚖️ Decisions Made</h3>
             {meeting.decisions && meeting.decisions.length > 0 ? (
-              <ul style={{ lineHeight: '1.8', color: '#f0f4f8' }}>
+              <ul style={{ lineHeight: '1.8', color: '#ece7e7' }}>
                 {meeting.decisions.map((decision, idx) => (
                   <li key={idx}>
                     <strong>{decision.description}</strong> 
-                    <span style={{ color: '#666', fontSize: '0.9rem' }}> (Decided by: {decision.decided_by})</span>
+                    <span style={{ color: '#fff8f8', fontSize: '0.9rem' }}> (Decided by: {decision.decided_by})</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p style={{ color: '#666' }}>No key decisions recorded.</p>
+              <p style={{ color: '#f0eaea' }}>No key decisions recorded.</p>
             )}
           </section>
 
           <section style={{ marginTop: '2.5rem' }}>
             <h3>🚧 Blockers & Risks</h3>
             {meeting.blockers && meeting.blockers.length > 0 ? (
-              <ul style={{ lineHeight: '1.8', color: '#f0f4f8' }}>
+              <ul style={{ lineHeight: '1.8', color: '#f2efef' }}>
                 {meeting.blockers.map((blocker, idx) => (
                   <li key={idx}>
                     <span style={{ fontWeight: 'bold', color: blocker.type === 'blocker' ? '#d32f2f' : '#f57c00' }}>
                       [{blocker.type.toUpperCase()}]
                     </span>{' '}
                     {blocker.description} 
-                    <span style={{ color: '#666', fontSize: '0.9rem' }}> (Raised by: {blocker.raised_by})</span>
+                    <span style={{ color: '#eee8e8', fontSize: '0.9rem' }}> (Raised by: {blocker.raised_by})</span>
                   </li>
                 ))}
               </ul>

@@ -1,0 +1,17 @@
+Meeting: Ad-hoc Brainstorming
+Date: 2026-05-29
+Attendees: Brian, Kelly
+
+Brian: Yeah, so, um, I was thinking about the... you know, the login page? It's just, it feels a bit clunky right now. Like, maybe we could, I don't know, move the SSO buttons higher?
+
+Kelly: Right, right. The Single Sign-On stuff. Yeah, the analytics show people miss them. We could put them above the email field. But wait, if we do that, does it mess up the mobile view? 
+
+Brian: Um, let me check. Give me a second... no, it shouldn't. Actually, wait. Yeah, maybe. I don't know. We should probably ask Dave about the mobile CSS. 
+
+Kelly: Okay, so, we want to move the Google and Apple login buttons to the top. I guess... I can make a Jira ticket for that? 
+
+Brian: Yeah, do that. Just make a ticket to redesign the login. And, uh, assign it to me, I guess. I'll look at it eventually. Oh, and also the password reset link is broken. Someone told me yesterday. 
+
+Kelly: Seriously? That's bad. I'll fix the password reset thing today. That's high priority. 
+
+Brian: Cool. So yeah, login page needs work. We'll figure it out later.

@@ -1,0 +1,37 @@
+Meeting: Database Choice for Analytics Dashboard
+Date: 2026-05-27
+Attendees: Chloe (Tech Lead), Sam (Data Engineer), Liam (Backend Developer)
+
+Chloe: Thanks everyone for joining. The purpose of this meeting is to decide on the database architecture for our new customer analytics dashboard. As we know, the current PostgreSQL read replicas are struggling with the complex aggregation queries, and it's causing the dashboard to load in over 15 seconds. We need a solution that can handle heavy analytical workloads.
+
+Sam: I've been doing some benchmarking. If we want sub-second response times for these aggregations, a traditional row-oriented relational database like Postgres isn't going to cut it anymore. I strongly propose we migrate the analytics data to a columnar database. My top recommendation is Snowflake. It's fully managed, scales compute independently from storage, and it handles our current query patterns beautifully in my tests.
+
+Liam: I reviewed your benchmarks, Sam, and they are impressive. But I have some concerns about introducing Snowflake. It's a completely different ecosystem. Our backend team is very comfortable with Postgres. If we go with Snowflake, we have to build new ETL pipelines to move the data from our transactional Postgres database into Snowflake. That's a lot of overhead. What about using something like ClickHouse or even just heavily optimizing our Postgres queries with materialized views?
+
+Chloe: Materialized views in Postgres are what we are using now, Liam, and the refresh times are becoming a bottleneck. The data is too stale by the time the views update.
+
+Sam: Exactly. And regarding the ETL pipeline, we'd have to build a pipeline regardless of whether we use Snowflake or ClickHouse. I prefer Snowflake because of its zero-copy cloning and time-travel features, which will make testing our queries much safer. 
+
+Liam: What about cost? Snowflake credits can get expensive if we aren't careful with our warehouse sizing.
+
+Sam: It's true, we need to monitor it. But the compute auto-suspends when not in use. I ran a cost projection, and it actually comes out cheaper than provisioning massive Postgres read replicas that sit idle 70% of the day.
+
+Chloe: Okay, let's look at the implementation effort. Liam, if we decide on Snowflake today, how long will it take your team to set up the basic ingestion pipeline?
+
+Liam: If we use a tool like Fivetran or Airbyte, we could probably have the raw data syncing in a week. But transforming it into the star schema the dashboard needs will take another two weeks. 
+
+Sam: I can take ownership of the data modeling and dbt transformations once the raw data is in.
+
+Chloe: This sounds like a solid plan. The performance gains are undeniable, and it sets us up for future scale. We will go with Snowflake for the analytics data warehouse. 
+
+Liam: Understood. I'll start researching Airbyte connectors today so we can get the sync running.
+
+Chloe: Excellent. So, decisions made: We are adopting Snowflake for the analytics database. Action items: Liam, please evaluate Airbyte and set up a proof-of-concept pipeline to sync our core 'users' and 'events' tables by next Tuesday. Sam, you'll need to design the initial star schema for the dashboard metrics by next Thursday. 
+
+Sam: Will do. I'll document the schema proposal in Confluence.
+
+Chloe: Are there any blockers moving forward?
+
+Liam: The only risk is getting the security approvals for Airbyte to access our production read replicas. I'll need to submit a ticket to the InfoSec team immediately. 
+
+Chloe: Good call. Please file that security ticket today, Liam, and flag it as high priority. We don't want that holding up the POC. Let's touch base on Friday to see how the Airbyte research is going.

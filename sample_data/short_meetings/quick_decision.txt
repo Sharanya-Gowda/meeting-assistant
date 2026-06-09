@@ -1,0 +1,15 @@
+Meeting: Notification Service Architecture
+Date: 2026-05-26
+Attendees: Marcus, Elena
+
+Marcus: Thanks for jumping on a quick call, Elena. We need to finalize how we are going to handle the new email notifications. We're torn between using SendGrid or Amazon SES. 
+
+Elena: Right. I looked into both. SendGrid has a slightly better developer experience and their template builder is great for the marketing team. But AWS SES is significantly cheaper at our scale, and since we are already fully hosted on AWS, the IAM permission integration is seamless.
+
+Marcus: I agree about the cost and integration. The marketing team can just use our internal CMS to manage templates anyway. Let's not add another vendor to our stack if we don't need to.
+
+Elena: Makes sense. Let's go with Amazon SES. 
+
+Marcus: Perfect. I will create the AWS IAM roles this afternoon and start drafting the integration tickets for the next sprint. 
+
+Elena: Great, I'll update the technical design document to reflect that we've chosen SES.

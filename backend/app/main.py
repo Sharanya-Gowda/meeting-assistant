@@ -54,7 +54,7 @@ def root():
         "documentation": "/docs"
     }
 
-@app.get("/api/health", tags=["Infrastructure"])
+@app.get("/health", tags=["Infrastructure"])
 def health_check():
     """
     System dependency layer verification trace heartbeat check.

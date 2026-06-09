@@ -1,0 +1,1 @@
+Hey everyone, let's look at the login crash. Sarah, did you get the logs? Yes, it looks like a null pointer on the auth token. Okay, Sarah, please push a hotfix for the auth service by 2 PM today. David, can you update the status page once it's deployed? Yes, will do. Anything else? No, that's it. Bye.

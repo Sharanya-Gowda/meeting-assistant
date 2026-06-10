@@ -12,7 +12,7 @@ if (BASE_URL.endsWith('/api')) {
 }
 
 // Health Check
-export const checkHealth = () => axios.get(`${BASE_URL}/api/health`);
+export const checkHealth = () => axios.get(`${BASE_URL}/health`);
 
 // Submission Endpoints
 export const submitMeetingText = (data) => axios.post(`${BASE_URL}/api/meetings/text`, data);

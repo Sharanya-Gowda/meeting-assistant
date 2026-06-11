@@ -1,16 +1,29 @@
-# AI Prompt Design & Iteration Log
+# AI Pipeline & Prompt Engineering Design
 
-## Iteration 1: Baseline MVP (Day 7)
-* **Goal:** Establish a baseline connection to Gemini 2.5 Flash and force a strict JSON output structure.
-* **Prompt Strategy:** Basic Zero-Shot prompting with a JSON schema definition.
-* **Findings:** * *Strengths:* Successfully returned valid JSON 100% of the time. Summaries were generally good.
-  * *Weaknesses:* Prone to mild hallucinations. If a meeting had no action items, the model would sometimes invent one (e.g., "Schedule next meeting"). It also struggled to differentiate between a proposed idea and a final decision.
+## 1. Model Selection
+**Google Gemini 2.5 Flash** was chosen as the core reasoning engine. It provides a massive context window (ideal for 10,000-word transcripts), executes highly accurate JSON formatting, and processes text up to 3x faster than comparable enterprise models.
 
-## Iteration 2: Advanced Guardrails & Persona (Day 13)
-* **Goal:** Eliminate hallucinations, improve extraction accuracy for edge cases, and better attribute owners to tasks.
-* **Prompt Strategy:** * Assigned an "Expert Executive Assistant" persona.
-  * Added **Strict Extraction Rules** defining exactly what constitutes a "Decision" versus a "Discussion".
-  * Added **Critical Anti-Hallucination Guardrails** explicitly instructing the model to return empty arrays `[]` rather than inventing data for edge-case meetings (e.g., purely informational town halls).
-* **Findings:** * Action item extraction is now much stricter.
-  * The model accurately ignores messy filler words in the transcript.
-  * Edge case tests (no action items, conflicting decisions) now map perfectly to the database without generating false positives.
+## 2. The Prompt Architecture
+The system prompt acts as a "Senior Executive Assistant". It is divided into three critical sections:
+
+### A. Persona & Role Assignment
+Establishes the LLM's boundary constraints, forcing it to act strictly as an analytical parser rather than a conversational chatbot.
+
+### B. Strict Extraction Rules
+* **Short & Detailed Summaries:** Enforces sentence and paragraph constraints.
+* **Decisions:** Instructs the model to ignore "proposed" ideas and only fetch "final" verdicts.
+* **Action Items:** Requires an actionable verb, an owner (or "Not identified" if vague), a deadline, and priority inference based on context keywords.
+* **Blockers:** Classifies roadblocks as "blocker", "risk", or "open_question".
+
+### C. Anti-Hallucination Guardrails
+To prevent the model from inventing data to please the user, the prompt explicitly states:
+> *"If the meeting has NO action items, return an empty list `[]`. Do NOT invent tasks. Base your extraction ONLY on the provided text. Do not use outside knowledge."*
+
+## 3. Pre-Processing & Security Heuristics
+Before calling the expensive LLM API, the backend runs local validations:
+1. **Word Count Constraints:** Rejects payloads under 50 words or over 10,000 words.
+2. **Substance Checks:** Scans for keywords (`discuss`, `action`, `decide`, `team`). If the text is purely small talk or filler (e.g., "Hello, testing microphone"), the backend blocks it with a `400 Bad Request` without querying Gemini.
+
+## 4. Fallback Mechanisms
+* **Markdown Stripping:** If the LLM wraps the response in markdown backticks (````json ````), a custom parser regex cleanly strips them before running `json.loads()`.
+* **Retry Loops:** Network timeouts and rate limits trigger an automatic sleep-and-retry sequence (up to 3 times) before officially returning a `502 Bad Gateway`.
